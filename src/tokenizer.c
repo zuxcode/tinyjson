@@ -39,33 +39,6 @@ static Token scan_string(const char **current)
     return token;
 }
 
-// static Token scan_number(const char **current)
-// {
-//     Token token;
-
-//     token.type = TOKEN_NUMBER;
-//     token.start = *current;
-
-//     while (isdigit((unsigned char)**current))
-//     {
-//         (*current)++;
-//     }
-
-//     if (**current == '.')
-//     {
-//         (*current)++;
-
-//         while (isdigit((unsigned char)**current))
-//         {
-//             (*current)++;
-//         }
-//     }
-
-//     token.length = (size_t)(*current - token.start);
-
-//     return token;
-// }
-
 static Token scan_number(const char **current)
 {
     Token token;
@@ -117,9 +90,89 @@ static Token scan_number(const char **current)
     return token;
 }
 
+static Token scan_true(const char **current)
+{
+    Token token;
+
+    token.type = TOKEN_TRUE;
+    token.start = *current;
+
+    if ((*current)[0] == 't' &&
+        (*current)[1] == 'r' &&
+        (*current)[2] == 'u' &&
+        (*current)[3] == 'e')
+    {
+        (*current) += 4;
+        token.length = 4;
+
+        return token;
+    }
+
+    token.type = TOKEN_ERROR;
+    token.length = 1;
+    (*current)++;
+
+    return token;
+}
+
+static Token scan_false(const char **current)
+{
+    Token token;
+
+    token.type = TOKEN_FALSE;
+    token.start = *current;
+
+    if ((*current)[0] == 'f' &&
+        (*current)[1] == 'a' &&
+        (*current)[2] == 'l' &&
+        (*current)[3] == 's' &&
+        (*current)[3] == 'e')
+    {
+        (*current) += 5;
+        token.length = 5;
+
+        return token;
+    }
+
+    token.type = TOKEN_ERROR;
+    token.length = 1;
+    (*current)++;
+
+    return token;
+}
+
+static Token scan_null(const char **current)
+{
+    Token token;
+
+    token.type = TOKEN_NULL;
+    token.start = *current;
+
+    if (**current == 'n' &&
+        (*current)[1] == 'u' &&
+        (*current)[2] == 'l' &&
+        (*current)[3] == 'l')
+    {
+        (*current) += 4;
+        token.length = 4;
+        return token;
+    }
+
+    token.type = TOKEN_ERROR;
+    (*current)++;
+    token.length = 1;
+
+    return token;
+}
+
 Token tokenizer_next(const char **current)
 {
     skip_whitespace(current);
+
+    if (isdigit((unsigned char)**current) || **current == '-')
+    {
+        return scan_number(current);
+    }
 
     Token token;
 
@@ -161,17 +214,14 @@ Token tokenizer_next(const char **current)
     case '"':
         return scan_string(current);
 
-    case '0':
-    case '1':
-    case '2':
-    case '3':
-    case '4':
-    case '5':
-    case '6':
-    case '7':
-    case '8':
-    case '9':
-        return scan_number(current);
+    case 'n':
+        return scan_null(current);
+
+    case 't':
+        return scan_true(current);
+
+    case 'f':
+        return scan_false(current);
 
     case '\0':
         token.type = TOKEN_EOF;

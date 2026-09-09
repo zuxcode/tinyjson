@@ -39,21 +39,21 @@ target_link_libraries(tinyjson
 )
 
 # Tests
-# include(CTest)
+include(CTest)
 
-# if(BUILD_TESTING)
-#     enable_testing()
+if(BUILD_TESTING)
+    enable_testing()
 
-#     add_executable(test_hello
-#         tests/test_hello.c
-#     )
+    add_executable(test_tokenizer
+        tests/test_tokenizer.c
+    )
 
-#     target_link_libraries(test_hello
-#         PRIVATE tinyjson_lib
-#     )
+    target_link_libraries(test_tokenizer
+        PRIVATE tinyjson_lib
+    )
 
-#     add_test(
-#         NAME hello_tests
-#         COMMAND test_hello
-#     )
-# endif()
+    add_test(
+        NAME test_tokenizers
+        COMMAND test_tokenizer
+    )
+endif()
