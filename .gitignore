@@ -1,0 +1,37 @@
+# CMake
+build/
+cmake-build-*/
+
+# Compiled binaries
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Executables
+myproject
+test_hello
+
+# Debugging
+*.dSYM/
+*.su
+*.stackdump
+
+# IDEs
+.vscode/
+.idea/
+*.code-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Coverage
+*.gcda
+*.gcno
+*.gcov
+coverage/
