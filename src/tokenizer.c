@@ -126,7 +126,7 @@ static Token scan_false(const char **current)
         (*current)[1] == 'a' &&
         (*current)[2] == 'l' &&
         (*current)[3] == 's' &&
-        (*current)[3] == 'e')
+        (*current)[4] == 'e')
     {
         (*current) += 5;
         token.length = 5;

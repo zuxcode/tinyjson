@@ -7,7 +7,7 @@ int main(void)
 {
     // const char *json = "{\"temperature\": -28.5.7}";
     // const char *json = "{\"temperature\": -28.5e7}";
-    const char *json = "{\"temperature\": null}";
+    const char *json = "{\"temperature\": false}";
     const char *current = json;
 
     Token token;
