@@ -13,8 +13,7 @@ cmake-build-*/
 *.exe
 
 # Executables
-myproject
-test_hello
+tinyjson
 
 # Debugging
 *.dSYM/

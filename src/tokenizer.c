@@ -1,12 +1,45 @@
 #include "tinyjson/tokenizer.h"
 #include <ctype.h>
 
+#define JSON_CONTROL_CHAR_MAX 0x1F
+
+static int is_json_whitespace(char c)
+{
+    return c == ' ' ||
+           c == '\t' ||
+           c == '\n' ||
+           c == '\r';
+}
+
+static int is_token_boundary(char c)
+{
+    return c == '\0' ||
+           c == ' ' ||
+           c == '\t' ||
+           c == '\n' ||
+           c == '\r' ||
+           c == ',' ||
+           c == ']' ||
+           c == '}' ||
+           c == ':';
+}
+
+static int is_valid_escape(char c)
+{
+    return c == '"' ||
+           c == '\\' ||
+           c == '/' ||
+           c == 'b' ||
+           c == 'f' ||
+           c == 'n' ||
+           c == 'r' ||
+           c == 't' ||
+           c == 'u';
+}
+
 static void skip_whitespace(const char **current)
 {
-    while (**current == ' ' ||
-           **current == '\n' ||
-           **current == '\r' ||
-           **current == '\t')
+    while (is_json_whitespace(**current))
     {
         (*current)++;
     }
@@ -18,22 +51,77 @@ static Token scan_string(const char **current)
 
     token.type = TOKEN_STRING;
 
-    /* Skip opening quote */
     (*current)++;
 
     token.start = *current;
 
-    while (**current != '"' && **current != '\0')
+    while (**current != '\0')
     {
+        if (**current == '\\')
+        {
+            (*current)++;
+
+            if (**current == '\0')
+            {
+                token.type = TOKEN_ERROR;
+                token.length = (size_t)(*current - token.start);
+                return token;
+            }
+
+            if (!is_valid_escape(**current))
+            {
+                token.type = TOKEN_ERROR;
+                token.length = (size_t)(*current - token.start);
+                return token;
+            }
+
+            if (**current == 'u')
+            {
+                (*current)++;
+
+                for (int i = 0; i < 4; i++)
+                {
+                    if (!isxdigit((unsigned char)**current))
+                    {
+                        token.type = TOKEN_ERROR;
+                        token.length = (size_t)(*current - token.start);
+                        return token;
+                    }
+
+                    (*current)++;
+                }
+
+                continue;
+            }
+
+            (*current)++;
+            continue;
+        }
+
+        if (**current == '"')
+        {
+            break;
+        }
+
+        if ((unsigned char)**current <= JSON_CONTROL_CHAR_MAX)
+        {
+            token.type = TOKEN_ERROR;
+            token.length = (size_t)(*current - token.start);
+            return token;
+        }
+
         (*current)++;
     }
 
     token.length = (size_t)(*current - token.start);
 
-    /* Skip closing quote */
     if (**current == '"')
     {
         (*current)++;
+    }
+    else
+    {
+        token.type = TOKEN_ERROR;
     }
 
     return token;
@@ -50,18 +138,59 @@ static Token scan_number(const char **current)
     if (**current == '-')
     {
         (*current)++;
+
+        /* '-' by itself is not a valid number */
+        if (!isdigit((unsigned char)**current))
+        {
+            token.type = TOKEN_ERROR;
+            token.length = (size_t)(*current - token.start);
+            return token;
+        }
     }
 
-    /* Integer part */
-    while (isdigit((unsigned char)**current))
+    /*
+     * Integer part
+     *
+     * JSON allows:
+     *     0
+     *     123
+     *
+     * But NOT:
+     *     01
+     *     0123
+     */
+    if (**current == '0')
     {
         (*current)++;
+
+        /* Leading zero */
+        if (isdigit((unsigned char)**current))
+        {
+            token.type = TOKEN_ERROR;
+            token.length = (size_t)(*current - token.start);
+            return token;
+        }
+    }
+    else
+    {
+        while (isdigit((unsigned char)**current))
+        {
+            (*current)++;
+        }
     }
 
     /* Fraction part */
     if (**current == '.')
     {
         (*current)++;
+
+        /* Decimal point must be followed by a digit */
+        if (!isdigit((unsigned char)**current))
+        {
+            token.type = TOKEN_ERROR;
+            token.length = (size_t)(*current - token.start);
+            return token;
+        }
 
         while (isdigit((unsigned char)**current))
         {
@@ -74,15 +203,29 @@ static Token scan_number(const char **current)
     {
         (*current)++;
 
+        /* Optional exponent sign */
         if (**current == '+' || **current == '-')
         {
             (*current)++;
+        }
+
+        /* e, e+, e- are invalid */
+        if (!isdigit((unsigned char)**current))
+        {
+            token.type = TOKEN_ERROR;
+            token.length = (size_t)(*current - token.start);
+            return token;
         }
 
         while (isdigit((unsigned char)**current))
         {
             (*current)++;
         }
+    }
+
+    if (!is_token_boundary(**current))
+    {
+        token.type = TOKEN_ERROR;
     }
 
     token.length = (size_t)(*current - token.start);
@@ -103,8 +246,13 @@ static Token scan_true(const char **current)
         (*current)[3] == 'e')
     {
         (*current) += 4;
-        token.length = 4;
 
+        if (!is_token_boundary(**current))
+        {
+            token.type = TOKEN_ERROR;
+        }
+
+        token.length = (size_t)(*current - token.start);
         return token;
     }
 
@@ -129,7 +277,13 @@ static Token scan_false(const char **current)
         (*current)[4] == 'e')
     {
         (*current) += 5;
-        token.length = 5;
+
+        if (!is_token_boundary(**current))
+        {
+            token.type = TOKEN_ERROR;
+        }
+
+        token.length = (size_t)(*current - token.start);
 
         return token;
     }
@@ -154,7 +308,14 @@ static Token scan_null(const char **current)
         (*current)[3] == 'l')
     {
         (*current) += 4;
-        token.length = 4;
+
+        if (!is_token_boundary(**current))
+        {
+            token.type = TOKEN_ERROR;
+        }
+
+        token.length = (size_t)(*current - token.start);
+
         return token;
     }
 
